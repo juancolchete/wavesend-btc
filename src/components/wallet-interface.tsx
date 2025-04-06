@@ -16,14 +16,6 @@ export default function WalletInterface() {
   const [showConnectModal, setShowConnectModal] = useState(false)
   const [nonce, setNonce] = useState("0")
 
-  function generateRandomNonce() {
-    return Math.floor(Math.random() * 1000000).toString()
-  }
-
-  function refreshNonce() {
-    setNonce(generateRandomNonce())
-  }
-
   function handleConnect(address: string) {
     setWalletAddress(address)
     setIsConnected(true)
@@ -69,9 +61,6 @@ export default function WalletInterface() {
                 <Label htmlFor="nonce">Nonce</Label>
                 <div className="flex gap-2">
                   <Input id="nonce" value={nonce} onChange={(e) => setNonce(e.target.value)} className="flex-1" />
-                  <Button variant="outline" size="icon" onClick={refreshNonce} title="Generate new nonce">
-                    <RefreshCw size={16} />
-                  </Button>
                 </div>
               </div>
 

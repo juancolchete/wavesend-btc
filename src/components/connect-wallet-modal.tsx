@@ -1,12 +1,13 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Plus, Key } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { generateWallet,getAddress } from "@/data"
 
 interface ConnectWalletModalProps {
   isOpen: boolean
@@ -15,48 +16,34 @@ interface ConnectWalletModalProps {
 }
 
 export default function ConnectWalletModal({ isOpen, onClose, onConnect }: ConnectWalletModalProps) {
-  const [privateKey, setPrivateKey] = useState("")
+  const [seedPhrase, setSeedPhrase] = useState("")
 
-  // Generate a realistic Bitcoin address
-  function generateBitcoinAddress() {
-    // This is a mock function - in a real app, you would derive this from cryptographic operations
-    const addressTypes = [
-      // Legacy address (P2PKH)
-      "1",
-      // SegWit address (P2SH)
-      "3",
-      // Native SegWit (bech32)
-      "bc1q",
-    ]
-
-    const type = addressTypes[Math.floor(Math.random() * addressTypes.length)]
-    const validChars = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
-
-    let address = type
-    // Generate a random string of valid characters
-    const length = type === "bc1q" ? 39 - type.length : 34 - type.length
-
-    for (let i = 0; i < length; i++) {
-      address += validChars.charAt(Math.floor(Math.random() * validChars.length))
-    }
-
-    return address
-  }
-
-  function handleCreateWallet() {
+  async function handleCreateWallet() {
     // Generate a realistic Bitcoin address
-    const address = generateBitcoinAddress()
+    const address = await generateWallet()
     onConnect(address)
   }
 
-  function handleImportWallet() {
-    if (!privateKey) return
+  async function handleImportWallet() {
+    if(window){
+      if (!seedPhrase) return
 
-    // In a real app, this would derive the Bitcoin address from the private key
-    // For now, we'll generate a realistic address
-    const address = generateBitcoinAddress()
-    onConnect(address)
+      localStorage.setItem('seed',seedPhrase)
+      const address = await getAddress(seedPhrase)
+      onConnect(address)
+    }
   }
+
+  useEffect(()=>{
+    async function loadWallet(){
+      const seed = localStorage.getItem('seed')
+      if(seed){
+        let address = await getAddress(seed) 
+        onConnect(address)
+      }
+    }
+    loadWallet()
+  },[])
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -85,17 +72,17 @@ export default function ConnectWalletModal({ isOpen, onClose, onConnect }: Conne
             <div className="space-y-4">
               <div className="flex items-center gap-2">
                 <Key className="h-5 w-5 text-slate-400" />
-                <p className="text-sm font-medium">Enter your private key</p>
+                <p className="text-sm font-medium">Enter your seed phrase</p>
               </div>
               <Input
                 type="password"
-                placeholder="Private key"
-                value={privateKey}
-                onChange={(e) => setPrivateKey(e.target.value)}
+                placeholder="seed phrase"
+                value={seedPhrase}
+                onChange={(e) => setSeedPhrase(e.target.value)}
               />
-              <p className="text-xs text-slate-500">Your private key is never stored or transmitted online</p>
+              <p className="text-xs text-slate-500">Your seed phrase is never stored or transmitted online</p>
             </div>
-            <Button onClick={handleImportWallet} className="w-full" disabled={!privateKey}>
+            <Button onClick={handleImportWallet} className="w-full" disabled={!seedPhrase}>
               Import Wallet
             </Button>
           </TabsContent>

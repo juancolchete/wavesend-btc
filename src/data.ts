@@ -1,6 +1,8 @@
-import * as bitcoin from "bitcoinjs-lib";
-import * as bip39 from "bip39";
-import * as bip32 from "bip32";
+import * as bitcoin from 'bitcoinjs-lib';
+import * as bitcore from 'bitcore-lib';
+import * as bip39 from 'bip39';
+
+
 function hexToString(hex: string, leadingZeros: number) {
   hex = hex.substring(2 + leadingZeros) // remove the '0x' part
   let string = ""
@@ -66,32 +68,57 @@ function decodeFromBase(encoded: string, leadingZeros: number) {
   return '0x' + leading + result.toString(16);
 }
 
-function base() {
 
-  // Generate a mnemonic (12-word phrase)
-  const mnemonic = bip39.generateMnemonic();
-  console.log("Mnemonic:", mnemonic);
+import { generateMnemonic as _generateMnemonic, mnemonicToSeed } from '@scure/bip39';
+import { wordlist } from '@scure/bip39/wordlists/english';
+import { HDKey } from '@scure/bip32';
 
-  // Derive a seed from the mnemonic
-  const seed = bip39.mnemonicToSeedSync(mnemonic);
-  const root = bip32.fromSeed(seed, bitcoin.networks.bitcoin);
+  const network_version = {
+    mainnet: {
+      private: 0x04b2430c,
+      public: 0x04b24746,
+    },
+    testnet: {
+      private: 0x045f18bc,
+      public: 0x045f1cf6,
+    },
+  };
+import * as btc from 'micro-btc-signer';
 
-  // Define the derivation path (BIP84 for SegWit)
-  const path = "m/84'/0'/0'/0/0";
-  const child = root.derivePath(path);
+type AllowedKeyEntropyBits = 128 | 256;
 
-  // Generate public and private keys
-  const { address } = bitcoin.payments.p2wpkh({
-    pubkey: child.publicKey,
-    network: bitcoin.networks.bitcoin,
-  });
+export function generateMnemonic(entropy: AllowedKeyEntropyBits = 256): string {
+  if (entropy !== 256 && entropy !== 128)
+    throw TypeError(
+      `Incorrect entropy bits provided, expected 256 or 128 (24 or 12 word results), got: "${String(
+        entropy
+      )}".`
+    );
+  return _generateMnemonic(wordlist, entropy);
+}
 
-  console.log("Address:", address);
-  console.log("Private Key (WIF):", child.toWIF());
+async function generateWallet() {
+  const mnemonic = generateMnemonic();
+  localStorage.setItem("seed", mnemonic)
+  const address = await getAddress(mnemonic)
+  return `${address}`
+}
 
+async function getAddress(seed: string) {
+  const masterseed = await mnemonicToSeed(seed);
+
+  const hdkey = HDKey.fromMasterSeed(masterseed, network_version.mainnet);
+
+  const receive_path = "m/84'/0'/0'/0/0";
+
+  const receive_node = hdkey.derive(receive_path);
+
+  const address = btc.getAddress('tr', receive_node.privateKey!);
+  return `${address}`
 }
 
 
 
-export { hexToString, stringToHex, encodeToBase, decodeFromBase };
+
+export { hexToString, stringToHex, encodeToBase, decodeFromBase, generateWallet, getAddress };
 
